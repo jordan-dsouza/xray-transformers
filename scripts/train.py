@@ -1,4 +1,5 @@
 import torch
+import os
 from torch.optim import AdamW
 from transformers import AutoModelForSequenceClassification
 from tqdm import tqdm
@@ -6,8 +7,10 @@ from tqdm import tqdm
 from xray.config import TrainingConfig
 from xray.utils import set_seed
 from xray.data import load_imdb
+from torch.amp import autocast, GradScaler
 
 def train():
+    os.makedirs("models", exist_ok=True)
     config = TrainingConfig()
     set_seed(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,6 +29,7 @@ def train():
     model.to(device)
 
     optimizer = AdamW(model.parameters(), lr=config.lr)
+    scaler = GradScaler('cuda')
 
     model.train()
     for epoch in range(config.epochs):
@@ -45,9 +49,17 @@ def train():
                 labels=labels,
             )
 
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
+            with autocast('cuda'):
+                outputs = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )
+                loss = outputs.loss
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             total_loss += loss.item()
             loop.set_postfix(loss=loss.item())
