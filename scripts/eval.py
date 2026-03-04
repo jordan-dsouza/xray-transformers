@@ -55,4 +55,5 @@ def evaluate(model_path: str):
 
 
 if __name__ == "__main__":
-    evaluate("models/distilbert_epoch_3.pt")
+
+    evaluate("models/distilbert_epoch_2.pt")
