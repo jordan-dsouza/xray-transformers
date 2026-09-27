@@ -75,7 +75,7 @@ class DistilBertInterpreter:
         attributions = attributions.sum(dim=-1).squeeze(0)
 
         # Convert token IDs back into readable tokens:
-        tokens = self.tokenizer.convert_ids_into_tokens(
+        tokens = self.tokenizer.convert_ids_to_tokens(
             input_ids.squeeze(0)
         )
 

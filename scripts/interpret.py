@@ -1,7 +1,7 @@
 import torch
 
 from transformers import (
-    DistilBertForSequenceCLassification,
+    DistilBertForSequenceClassification,
     DistilBertTokenizer
 )
 
@@ -16,7 +16,7 @@ print("Loading tokenizer...")
 
 
 # Load YOUR fine-tuned model HERE in "quotes" from HuggingFace:
-model = DistilBertForSequenceCLassification.from_pretrained(
+model = DistilBertForSequenceClassification.from_pretrained(
     "JDsouza1/distilbert-imdb-sentiment"
 ).to(device)
 
