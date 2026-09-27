@@ -27,6 +27,46 @@ class DistilBertInterpreter:
         # Class prediction scores:
         return outputs.logits
 
+    def aggregate_tokens(self, tokens, attributions):
+        """
+        Merge WordPiece tokens into complete words and remove special tokens
+        """
+        words = []
+        scores = []
+
+        current_word = ""
+        current_score = 0.0
+
+        for token, score in zip(tokens, attributions):
+            score = float(score)
+
+            # Ignore special tokens:
+            if token in ["[CLS]", "[SEP]", "[PAD]"]:
+                continue
+            
+            # Start of a new word:
+            if not token.startswith("##"):
+
+                # Save previous word:
+                if current_word:
+                    words.append(current_word)
+                    score.append(current_score)
+
+                current_word = token
+                current_score = score
+            
+            else:
+                # Continue with previous WordPiece token:
+                current_word += token[2:]
+                current_score += score
+        
+        # Save final word:
+        if current_word:
+            words.append(current_word)
+            scores.append(current_score)
+
+        return words, scores
+
     def attribute(self, text, target_label=None):
         """
         Calculate importance scores for each token
