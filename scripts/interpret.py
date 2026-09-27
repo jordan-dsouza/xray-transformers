@@ -1,4 +1,4 @@
-import torch
+"""import torch
 
 from transformers import (
     DistilBertForSequenceClassification,
@@ -64,4 +64,72 @@ for word, scores in zip(words, scores):
 # Check how well have the Integrated Gradients converged:
 print("\nConvergence delta:", float(delta.item()))
 
-# Delta value closer to 0 indicates better convergence
+# Delta value closer to 0 indicates better convergence"""
+import torch
+
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizer
+)
+
+from xray.interpretability import DistilBertInterpreter
+
+
+# Select GPU if available
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
+
+print("Device:", device)
+
+# Load model and tokenizer from Hugging Face
+print("Loading model...")
+
+model = DistilBertForSequenceClassification.from_pretrained(
+    "JDsouza1/distilbert-imdb-sentiment"
+).to(device)
+
+tokenizer = DistilBertTokenizer.from_pretrained(
+    "JDsouza1/distilbert-imdb-sentiment"
+)
+
+print("Model loaded!")
+
+
+# Create interpreter
+interpreter = DistilBertInterpreter(
+    model,
+    tokenizer,
+    device
+)
+
+
+text = "This movie was marvellous!"
+
+
+# Calculate attributions
+tokens, attributions, delta = interpreter.attribute(text)
+
+
+print("\nRAW ATTRIBUTIONS")
+print("-" * 40)
+
+for token, score in zip(tokens, attributions):
+    print(f"{token:15} {float(score):.4f}")
+
+
+# Aggregate WordPiece tokens
+words, scores = interpreter.aggregate_tokens(
+    tokens,
+    attributions
+)
+
+
+print("\nWORD-LEVEL ATTRIBUTIONS")
+print("-" * 40)
+
+for word, score in zip(words, scores):
+    print(f"{word:15} {float(score):.4f}")
+
+
+print("\nConvergence delta:", float(delta.item()))

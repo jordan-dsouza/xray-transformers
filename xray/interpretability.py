@@ -29,39 +29,44 @@ class DistilBertInterpreter:
 
     def aggregate_tokens(self, tokens, attributions):
         """
-        Merge WordPiece tokens into complete words and remove special tokens
+        Merge WordPiece tokens into complete words.
+        Special tokens are excluded.
         """
+
         words = []
         scores = []
 
-        current_word = ""
+        current_word = None
         current_score = 0.0
 
         for token, score in zip(tokens, attributions):
+
+            # Convert tensor to a normal Python number
             score = float(score)
 
-            # Ignore special tokens:
+            # Ignore special tokens
             if token in ["[CLS]", "[SEP]", "[PAD]"]:
                 continue
-            
-            # Start of a new word:
+
+            # New word
             if not token.startswith("##"):
 
-                # Save previous word:
-                if current_word:
+                # Store previous word
+                if current_word is not None:
                     words.append(current_word)
                     scores.append(current_score)
 
                 current_word = token
                 current_score = score
-            
+
+            # WordPiece continuation
             else:
-                # Continue with previous WordPiece token:
-                current_word += token[2:]
-                current_score += score
-        
-        # Save final word:
-        if current_word:
+                if current_word is not None:
+                    current_word += token[2:]
+                    current_score += score
+
+        # Store final word
+        if current_word is not None:
             words.append(current_word)
             scores.append(current_score)
 
