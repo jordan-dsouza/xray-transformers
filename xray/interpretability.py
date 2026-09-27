@@ -50,7 +50,7 @@ class DistilBertInterpreter:
                 # Save previous word:
                 if current_word:
                     words.append(current_word)
-                    score.append(current_score)
+                    scores.append(current_score)
 
                 current_word = token
                 current_score = score

@@ -43,10 +43,11 @@ text = "This movie was marvellous!"
 tokens, attributions, delta = interpreter.attribute(text)
 
 print("\nRaw token attributions:")
+print("-" * 40)
 
 # Print each token and attribution score:
 for token, score in zip(tokens, attributions):
-    print(f"{token:15} {score:.4f}")
+    print(f"{token:15} {float(score):.4f}")
 
 # Merge WordPiece tokens:
 words, scores = interpreter.aggregate_tokens(
@@ -55,11 +56,12 @@ words, scores = interpreter.aggregate_tokens(
 )
 
 print("\nWord - level attributions:")
+print("-" * 40)
 
 for word, scores in zip(words, scores):
-    print(f"{word:15} {score:.4f}")
+    print(f"{word:15} {float(score):.4f}")
 
 # Check how well have the Integrated Gradients converged:
-print("\nConvergence delta:", delta.item())
+print("\nConvergence delta:", float(delta.item()))
 
 # Delta value closer to 0 indicates better convergence
