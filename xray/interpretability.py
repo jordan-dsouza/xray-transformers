@@ -37,7 +37,7 @@ class DistilBertInterpreter:
             text,
             return_tensors="pt",
             truncation=True,
-            padding=True
+            padding=False
         )
 
         # Move inputs to device:
@@ -46,6 +46,9 @@ class DistilBertInterpreter:
 
         # Convert token IDs into embeddings:
         embeddings = self.model.distilbert.embeddings(input_ids)
+
+        # Create zero embeddings baseline:
+        baseline = torch.zeros_like(embeddings)
 
         # If no target class, explain model prediction:
         if target_label is None:
@@ -66,9 +69,11 @@ class DistilBertInterpreter:
         # Calculate INTEGRATED GRADIENTS:
         attributions, delta = self.ig.attribute(
             inputs=embeddings,
+            baselines=baseline,
             additional_forward_args=(attention_mask,),
             target=target_label,
-            return_convergence_delta=True
+            return_convergence_delta=True,
+            n_steps=500
         )
 
         # Combine attribution values across embedded dimensions:
@@ -80,4 +85,8 @@ class DistilBertInterpreter:
         )
 
         # Return tokens, importance scores and convergance info:
-        return tokens, attributions.detach().cpu(), delta
+        return (
+            tokens, 
+            attributions.detach().cpu(), 
+            delta.detach().cpu()
+            )
