@@ -93,7 +93,20 @@ class DistilBertInterpreter:
         embeddings = self.model.distilbert.embeddings(input_ids)
 
         # Create zero embeddings baseline:
-        baseline = torch.zeros_like(embeddings)
+        #baseline = torch.zeros_like(embeddings)
+        #########
+        # Use the PAD token as the baseline
+        pad_token_id = self.tokenizer.pad_token_id
+
+        baseline_ids = torch.full_like(
+            input_ids,
+            pad_token_id
+        )
+
+        baseline = self.model.distilbert.embeddings(
+            baseline_ids
+        )
+        ########
 
         # If no target class, explain model prediction:
         if target_label is None:
@@ -131,7 +144,7 @@ class DistilBertInterpreter:
             additional_forward_args=(attention_mask,),
             target=target_label,
             return_convergence_delta=True,
-            n_steps=500
+            n_steps=1000
         )
 
         # Combine attribution values across embedded dimensions:
