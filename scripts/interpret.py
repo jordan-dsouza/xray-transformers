@@ -108,8 +108,15 @@ text = "This movie was marvellous!"
 
 
 # Calculate attributions
-tokens, attributions, delta = interpreter.attribute(text)
-
+(
+    tokens,
+    attributions,
+    delta,
+    input_output,
+    baseline_output,
+    total_attribution,
+    completeness_error
+) = interpreter.attribute(text)
 
 print("\nRAW ATTRIBUTIONS")
 print("-" * 40)
@@ -133,3 +140,18 @@ for word, score in zip(words, scores):
 
 
 print("\nConvergence delta:", float(delta.item()))
+
+print("\nCOMPLETENESS CHECK")
+print("-" * 40)
+
+print("Model output:", float(input_output))
+print("Baseline output:", float(baseline_output))
+print("Output difference:", float(
+    input_output - baseline_output
+))
+
+print("Sum of attributions:", float(total_attribution))
+
+print("Captum convergence delta:", float(delta))
+
+print("Our completeness error:", float(completeness_error))

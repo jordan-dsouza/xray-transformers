@@ -111,6 +111,19 @@ class DistilBertInterpreter:
                     dim=1
                 ).item()
         
+        # Get model output for real input:
+        with torch.no_grad():
+            input_output = self.forward_func(
+                embeddings,
+                attention_mask
+            )[0, target_label]
+
+            # Get model output for baseline:
+            baseline_output = self.forward_func(
+                baseline,
+                attention_mask
+            )[0, target_label]
+
         # Calculate INTEGRATED GRADIENTS:
         attributions, delta = self.ig.attribute(
             inputs=embeddings,
@@ -122,7 +135,18 @@ class DistilBertInterpreter:
         )
 
         # Combine attribution values across embedded dimensions:
-        attributions = attributions.sum(dim=-1).squeeze(0)
+        token_attributions = attributions.sum(dim=-1).squeeze(0)
+
+        # Sum all token attributions:
+        total_attribution = token_attributions.sum()
+
+        # Difference between input and baseline outputs:
+        output_difference = input_output - baseline_output
+
+        # Completeness error:
+        completeness_error = (
+            total_attribution - output_difference
+        )
 
         # Convert token IDs back into readable tokens:
         tokens = self.tokenizer.convert_ids_to_tokens(
@@ -132,6 +156,10 @@ class DistilBertInterpreter:
         # Return tokens, importance scores and convergance info:
         return (
             tokens, 
-            attributions.detach().cpu(), 
-            delta.detach().cpu()
-            )
+            token_attributions.detach().cpu(), 
+            delta.detach().cpu(),
+            input_output.detach().cpu(),
+            baseline_output.detach().cpu(),
+            total_attribution.detach().cpu(),
+            completeness_error.detach().cpu()
+        )
