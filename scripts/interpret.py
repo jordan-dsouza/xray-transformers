@@ -118,18 +118,19 @@ text = "This movie was marvellous!"
     completeness_error
 ) = interpreter.attribute(text)
 
-print("\nRAW ATTRIBUTIONS")
-print("-" * 40)
-
-for token, score in zip(tokens, attributions):
-    print(f"{token:15} {float(score):.4f}")
-
 
 # Aggregate WordPiece tokens
 words, scores = interpreter.aggregate_tokens(
     tokens,
     attributions
 )
+
+print("\nRAW ATTRIBUTIONS")
+print("-" * 40)
+
+for token, score in zip(tokens, attributions):
+    print(f"{token:15} {float(score):.4f}")
+
 
 
 print("\nWORD-LEVEL ATTRIBUTIONS")
@@ -138,20 +139,14 @@ print("-" * 40)
 for word, score in zip(words, scores):
     print(f"{word:15} {float(score):.4f}")
 
-
-print("\nConvergence delta:", float(delta.item()))
+#print("\nConvergence delta:", float(delta.item()))
 
 print("\nCOMPLETENESS CHECK")
 print("-" * 40)
 
 print("Model output:", float(input_output))
 print("Baseline output:", float(baseline_output))
-print("Output difference:", float(
-    input_output - baseline_output
-))
-
+print("Output difference:", float(input_output - baseline_output))
 print("Sum of attributions:", float(total_attribution))
-
-print("Captum convergence delta:", float(delta))
-
-print("Our completeness error:", float(completeness_error))
+#print("Captum convergence delta:", float(delta))
+print("Completeness error:", float(completeness_error))
