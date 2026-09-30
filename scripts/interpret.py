@@ -139,6 +139,12 @@ print("-" * 40)
 for word, score in zip(words, scores):
     print(f"{word:15} {float(score):.4f}")
 
+# Visualize attributions: 
+interpreter.visualize_attributions(
+    words,
+    scores
+)
+
 #print("\nConvergence delta:", float(delta.item()))
 
 print("\nCOMPLETENESS CHECK")

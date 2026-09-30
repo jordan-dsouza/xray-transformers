@@ -176,3 +176,31 @@ class DistilBertInterpreter:
             total_attribution.detach().cpu(),
             completeness_error.detach().cpu()
         )
+
+
+    def visualize_attributions(self, words, scores):
+        
+        """
+        Print word-level attributions as a simple text visualization.
+        Positive scores support the prediction.
+        Negative scores oppose the prediction.
+        """
+
+        print("\nATTRIBUTION VISUALIZATION")
+        print("-" * 50)
+
+        for word, score in zip(words, scores):
+
+            score = float(score)
+
+            # Create a bar based on attribution magnitude
+            bar_length = min(int(abs(score) * 20), 30)
+
+            # Positive score (+):
+            if score >= 0:
+                bar = "+" * bar_length
+                print(f"{word:15} {score:+.4f}  {bar}")
+            # Negative score (-):
+            else:
+                bar = "-" * bar_length
+                print(f"{word:15} {score:+.4f}  {bar}")
