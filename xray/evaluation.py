@@ -321,6 +321,7 @@ def repeated_random_deletion_curves(
 
     return curves
 
+
 def summarize_random_curves(random_curves):
     """
     Calculate the mean and standard deviation across
