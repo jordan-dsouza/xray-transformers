@@ -294,6 +294,38 @@ def random_deletion_curve(
         "original_logit": original_logit
     }
 
+def repeated_random_deletion_curves(
+    model,
+    tokenizer,
+    text,
+    tokens,
+    target_label,
+    device,
+    seeds
+):
+    """
+    Run random deletion multiple times using different seeds.
+
+    Returns a list of random deletion curves.
+    """
+
+    curves = []
+
+    for seed in seeds:
+
+        curve = random_deletion_curve(
+            model=model,
+            tokenizer=tokenizer,
+            text=text,
+            tokens=tokens,
+            target_label=target_label,
+            device=device,
+            seed=seed
+        )
+
+        curves.append(curve)
+
+    return curves
 
 def evaluate_logit_faithfulness(
     top_k_curve,
