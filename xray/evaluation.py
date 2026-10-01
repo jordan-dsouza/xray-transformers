@@ -428,6 +428,42 @@ def evaluate_repeated_random_faithfulness(
         )
     }
 
+def print_faithfulness_summary(summary):
+    """
+    Print a compact summary of faithfulness evaluation.
+    """
+
+    print("\nFAITHFULNESS EVALUATION")
+    print("-" * 40)
+
+    print(f"Original target logit:       {summary['original_logit']:.4f}")
+    print(
+        f"Attribution final logit:     "
+        f"{summary['top_k_final_logit']:.4f}"
+    )
+    print(
+        f"Mean random final logit:     "
+        f"{summary['random_mean_final_logit']:.4f}"
+    )
+
+    print()
+
+    print(
+        f"Attribution drop AUC:        "
+        f"{summary['top_k_drop_auc']:.4f}"
+    )
+    print(
+        f"Mean random drop AUC:        "
+        f"{summary['random_mean_drop_auc']:.4f}"
+    )
+
+    print()
+
+    print(
+        f"Attribution AUC > random:   "
+        f"{summary['top_k_auc_higher']}"
+    )
+
 def evaluate_logit_faithfulness(
     top_k_curve,
     random_curve
