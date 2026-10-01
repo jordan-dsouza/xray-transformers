@@ -532,3 +532,146 @@ def evaluate_logit_faithfulness(
             top_k_auc > random_auc
         )
     }
+
+def evaluate_example(
+    model,
+    tokenizer,
+    interpreter,
+    text,
+    device,
+    seeds
+):
+    """
+    Run the complete attribution faithfulness evaluation
+    for a single text example.
+
+    Steps:
+        1. Generate Integrated Gradients attributions.
+        2. Aggregate WordPiece tokens into words.
+        3. Determine the target class.
+        4. Run attribution-guided deletion.
+        5. Run repeated random deletion.
+        6. Compare attribution against the random baseline.
+    """
+
+    # --------------------------------------------------
+    # 1. Generate attributions
+    # --------------------------------------------------
+
+    (
+        tokens,
+        token_attributions,
+        delta,
+        input_output,
+        baseline_output,
+        total_attribution,
+        completeness_error
+    ) = interpreter.attribute(text)
+
+    # --------------------------------------------------
+    # 2. Determine target label
+    # --------------------------------------------------
+
+    encoding = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=False
+    )
+
+    input_ids = encoding["input_ids"].to(device)
+    attention_mask = encoding["attention_mask"].to(device)
+
+    with torch.no_grad():
+
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+
+    target_label = torch.argmax(
+        outputs.logits,
+        dim=1
+    ).item()
+
+    # --------------------------------------------------
+    # 3. Aggregate token attributions into words
+    # --------------------------------------------------
+
+    words, word_scores = interpreter.aggregate_tokens(
+        tokens,
+        token_attributions
+    )
+
+    # --------------------------------------------------
+    # 4. Attribution-guided deletion
+    # --------------------------------------------------
+
+    top_k_curve = top_k_deletion_curve(
+        model=model,
+        tokenizer=tokenizer,
+        text=text,
+        tokens=tokens,
+        scores=word_scores,
+        target_label=target_label,
+        device=device
+    )
+
+    # --------------------------------------------------
+    # 5. Repeated random deletion
+    # --------------------------------------------------
+
+    random_curves = repeated_random_deletion_curves(
+        model=model,
+        tokenizer=tokenizer,
+        text=text,
+        tokens=tokens,
+        target_label=target_label,
+        device=device,
+        seeds=seeds
+    )
+
+    # --------------------------------------------------
+    # 6. Summarize random curves
+    # --------------------------------------------------
+
+    random_summary = summarize_random_curves(
+        random_curves
+    )
+
+    # --------------------------------------------------
+    # 7. Calculate faithfulness
+    # --------------------------------------------------
+
+    faithfulness = evaluate_repeated_random_faithfulness(
+        top_k_curve=top_k_curve,
+        random_summary=random_summary
+    )
+
+    # --------------------------------------------------
+    # 8. Return everything
+    # --------------------------------------------------
+
+    return {
+        "text": text,
+        "target_label": target_label,
+
+        "tokens": tokens,
+        "token_attributions": token_attributions,
+
+        "words": words,
+        "word_scores": word_scores,
+
+        "convergence_delta": delta,
+        "input_output": input_output,
+        "baseline_output": baseline_output,
+        "total_attribution": total_attribution,
+        "completeness_error": completeness_error,
+
+        "top_k_curve": top_k_curve,
+
+        "random_curves": random_curves,
+        "random_summary": random_summary,
+
+        "faithfulness": faithfulness
+    }
