@@ -1,6 +1,13 @@
 import numpy as np
 import torch
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+PROJECT_ROOT = Path.cwd().parent
+sys.path.append(str(PROJECT_ROOT))
+
 from xray.evaluation import (
     _get_word_token_groups,
     _create_deleted_input,
