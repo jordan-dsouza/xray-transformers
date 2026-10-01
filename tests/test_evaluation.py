@@ -142,7 +142,7 @@ def test_repeated_random_faithfulness():
         result["random_mean_drop_auc"]
     )
 
-    assert result["top_k_auc_higher"] is True
+    assert result["top_k_auc_higher"]
 
 # Test probability-based faithfulness:
 
@@ -178,4 +178,4 @@ def test_probability_faithfulness():
         result["random_probability_drop_auc"]
     )
 
-    assert result["top_k_auc_higher"] is True
+    assert result["top_k_auc_higher"]
