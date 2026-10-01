@@ -83,9 +83,7 @@ def _get_word_token_groups(tokens):
 
 def _create_deleted_input(
     input_ids,
-    attention_mask,
-    deleted_token_indices,
-    tokenizer
+    deleted_token_indices
 ):
     """
     Create a new model input after removing selected tokens.
@@ -196,9 +194,7 @@ def top_k_deletion_curve(
 
         new_input_ids, new_attention_mask = _create_deleted_input(
             input_ids,
-            attention_mask,
-            deleted_token_indices,
-            tokenizer
+            deleted_token_indices
         )
 
         logit = _predict_from_ids(
@@ -272,9 +268,7 @@ def random_deletion_curve(
 
         new_input_ids, new_attention_mask = _create_deleted_input(
             input_ids,
-            attention_mask,
-            deleted_token_indices,
-            tokenizer
+            deleted_token_indices
         )
 
         logit = _predict_from_ids(
@@ -428,6 +422,104 @@ def evaluate_repeated_random_faithfulness(
         )
     }
 
+
+def logit_to_probability(logit):
+    """
+    Convert a binary classification logit into probability.
+    """
+
+    return 1.0 / (1.0 + np.exp(-logit))
+
+def evaluate_probability_faithfulness(
+    top_k_curve,
+    random_summary
+):
+    """
+    Compare attribution-guided deletion against
+    repeated random deletion using target-class probability.
+
+    Measures the area under the cumulative probability-drop curve.
+    """
+
+    top_k_logits = np.asarray(
+        top_k_curve["logits"],
+        dtype=float
+    )
+
+    random_mean_logits = np.asarray(
+        random_summary["mean_logits"],
+        dtype=float
+    )
+
+    fractions = np.asarray(
+        top_k_curve["fractions"],
+        dtype=float
+    )
+
+    # Convert logits to probabilities.
+    top_k_probabilities = logit_to_probability(
+        top_k_logits
+    )
+
+    random_probabilities = logit_to_probability(
+        random_mean_logits
+    )
+
+    original_probability = float(
+        top_k_probabilities[0]
+    )
+
+    # Probability decrease relative to original input.
+    top_k_drops = (
+        original_probability -
+        top_k_probabilities
+    )
+
+    random_drops = (
+        original_probability -
+        random_probabilities
+    )
+
+    # Area under cumulative probability-drop curves.
+    top_k_auc = np.trapezoid(
+        top_k_drops,
+        fractions
+    )
+
+    random_auc = np.trapezoid(
+        random_drops,
+        fractions
+    )
+
+    return {
+        "original_probability": original_probability,
+
+        "top_k_final_probability": (
+            top_k_probabilities[-1]
+        ),
+
+        "random_mean_final_probability": (
+            random_probabilities[-1]
+        ),
+
+        "top_k_final_probability_drop": (
+            top_k_drops[-1]
+        ),
+
+        "random_mean_final_probability_drop": (
+            random_drops[-1]
+        ),
+
+        "top_k_probability_drop_auc": top_k_auc,
+
+        "random_probability_drop_auc": random_auc,
+
+        "top_k_auc_higher": (
+            top_k_auc > random_auc
+        )
+    }
+
+
 def print_faithfulness_summary(summary):
     """
     Print a compact summary of faithfulness evaluation.
@@ -464,74 +556,7 @@ def print_faithfulness_summary(summary):
         f"{summary['top_k_auc_higher']}"
     )
 
-def evaluate_logit_faithfulness(
-    top_k_curve,
-    random_curve
-):
-    """
-    Compare attribution-guided deletion against random deletion.
 
-    Measures the area under the cumulative target-logit drop curve.
-
-    A larger AUC means the target logit drops more rapidly
-    as important features are deleted.
-    """
-
-    top_k_logits = np.asarray(
-        top_k_curve["logits"],
-        dtype=float
-    )
-
-    random_logits = np.asarray(
-        random_curve["logits"],
-        dtype=float
-    )
-
-    fractions = np.asarray(
-        top_k_curve["fractions"],
-        dtype=float
-    )
-
-    original_logit = float(
-        top_k_curve["original_logit"]
-    )
-
-    # Convert logits into cumulative drops.
-    top_k_drops = (
-        original_logit - top_k_logits
-    )
-
-    random_drops = (
-        original_logit - random_logits
-    )
-
-    # Area under cumulative-drop curves.
-    top_k_auc = np.trapezoid(
-        top_k_drops,
-        fractions
-    )
-
-    random_auc = np.trapezoid(
-        random_drops,
-        fractions
-    )
-
-    return {
-        "original_logit": original_logit,
-
-        "top_k_final_logit": top_k_logits[-1],
-        "random_final_logit": random_logits[-1],
-
-        "top_k_final_drop": top_k_drops[-1],
-        "random_final_drop": random_drops[-1],
-
-        "top_k_drop_auc": top_k_auc,
-        "random_drop_auc": random_auc,
-
-        "top_k_auc_higher": (
-            top_k_auc > random_auc
-        )
-    }
 
 def evaluate_example(
     model,
@@ -685,98 +710,4 @@ def evaluate_example(
         "probability_faithfulness": probability_faithfulness
     }
 
-def logit_to_probability(logit):
-    """
-    Convert a binary classification logit into probability.
-    """
 
-    return 1.0 / (1.0 + np.exp(-logit))
-
-def evaluate_probability_faithfulness(
-    top_k_curve,
-    random_summary
-):
-    """
-    Compare attribution-guided deletion against
-    repeated random deletion using target-class probability.
-
-    Measures the area under the cumulative probability-drop curve.
-    """
-
-    top_k_logits = np.asarray(
-        top_k_curve["logits"],
-        dtype=float
-    )
-
-    random_mean_logits = np.asarray(
-        random_summary["mean_logits"],
-        dtype=float
-    )
-
-    fractions = np.asarray(
-        top_k_curve["fractions"],
-        dtype=float
-    )
-
-    # Convert logits to probabilities.
-    top_k_probabilities = logit_to_probability(
-        top_k_logits
-    )
-
-    random_probabilities = logit_to_probability(
-        random_mean_logits
-    )
-
-    original_probability = float(
-        top_k_probabilities[0]
-    )
-
-    # Probability decrease relative to original input.
-    top_k_drops = (
-        original_probability -
-        top_k_probabilities
-    )
-
-    random_drops = (
-        original_probability -
-        random_probabilities
-    )
-
-    # Area under cumulative probability-drop curves.
-    top_k_auc = np.trapezoid(
-        top_k_drops,
-        fractions
-    )
-
-    random_auc = np.trapezoid(
-        random_drops,
-        fractions
-    )
-
-    return {
-        "original_probability": original_probability,
-
-        "top_k_final_probability": (
-            top_k_probabilities[-1]
-        ),
-
-        "random_mean_final_probability": (
-            random_probabilities[-1]
-        ),
-
-        "top_k_final_probability_drop": (
-            top_k_drops[-1]
-        ),
-
-        "random_mean_final_probability_drop": (
-            random_drops[-1]
-        ),
-
-        "top_k_probability_drop_auc": top_k_auc,
-
-        "random_probability_drop_auc": random_auc,
-
-        "top_k_auc_higher": (
-            top_k_auc > random_auc
-        )
-    }
