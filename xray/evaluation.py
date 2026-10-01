@@ -649,7 +649,15 @@ def evaluate_example(
     )
 
     # --------------------------------------------------
-    # 8. Return everything
+    # 8. Calculate probability faithfulness
+    # --------------------------------------------------
+
+    probability_faithfulness = evaluate_probability_faithfulness(
+    top_k_curve=top_k_curve,
+    random_summary=random_summary
+)
+    # --------------------------------------------------
+    # 9. Return everything
     # --------------------------------------------------
 
     return {
@@ -673,7 +681,8 @@ def evaluate_example(
         "random_curves": random_curves,
         "random_summary": random_summary,
 
-        "faithfulness": faithfulness
+        "faithfulness": faithfulness,
+        "probability_faithfulness": probability_faithfulness
     }
 
 def logit_to_probability(logit):
