@@ -327,6 +327,39 @@ def repeated_random_deletion_curves(
 
     return curves
 
+def summarize_random_curves(random_curves):
+    """
+    Calculate the mean and standard deviation across
+    multiple random deletion curves.
+    """
+
+    logits = np.asarray([
+        curve["logits"]
+        for curve in random_curves
+    ])
+
+    fractions = np.asarray(
+        random_curves[0]["fractions"],
+        dtype=float
+    )
+
+    mean_logits = np.mean(
+        logits,
+        axis=0
+    )
+
+    std_logits = np.std(
+        logits,
+        axis=0
+    )
+
+    return {
+        "fractions": fractions,
+        "mean_logits": mean_logits,
+        "std_logits": std_logits,
+        "all_logits": logits
+    }
+
 def evaluate_logit_faithfulness(
     top_k_curve,
     random_curve
