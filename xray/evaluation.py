@@ -675,3 +675,99 @@ def evaluate_example(
 
         "faithfulness": faithfulness
     }
+
+def logit_to_probability(logit):
+    """
+    Convert a binary classification logit into probability.
+    """
+
+    return 1.0 / (1.0 + np.exp(-logit))
+
+def evaluate_probability_faithfulness(
+    top_k_curve,
+    random_summary
+):
+    """
+    Compare attribution-guided deletion against
+    repeated random deletion using target-class probability.
+
+    Measures the area under the cumulative probability-drop curve.
+    """
+
+    top_k_logits = np.asarray(
+        top_k_curve["logits"],
+        dtype=float
+    )
+
+    random_mean_logits = np.asarray(
+        random_summary["mean_logits"],
+        dtype=float
+    )
+
+    fractions = np.asarray(
+        top_k_curve["fractions"],
+        dtype=float
+    )
+
+    # Convert logits to probabilities.
+    top_k_probabilities = logit_to_probability(
+        top_k_logits
+    )
+
+    random_probabilities = logit_to_probability(
+        random_mean_logits
+    )
+
+    original_probability = float(
+        top_k_probabilities[0]
+    )
+
+    # Probability decrease relative to original input.
+    top_k_drops = (
+        original_probability -
+        top_k_probabilities
+    )
+
+    random_drops = (
+        original_probability -
+        random_probabilities
+    )
+
+    # Area under cumulative probability-drop curves.
+    top_k_auc = np.trapezoid(
+        top_k_drops,
+        fractions
+    )
+
+    random_auc = np.trapezoid(
+        random_drops,
+        fractions
+    )
+
+    return {
+        "original_probability": original_probability,
+
+        "top_k_final_probability": (
+            top_k_probabilities[-1]
+        ),
+
+        "random_mean_final_probability": (
+            random_probabilities[-1]
+        ),
+
+        "top_k_final_probability_drop": (
+            top_k_drops[-1]
+        ),
+
+        "random_mean_final_probability_drop": (
+            random_drops[-1]
+        ),
+
+        "top_k_probability_drop_auc": top_k_auc,
+
+        "random_probability_drop_auc": random_auc,
+
+        "top_k_auc_higher": (
+            top_k_auc > random_auc
+        )
+    }
