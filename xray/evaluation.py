@@ -1,0 +1,335 @@
+import torch
+import numpy as np
+
+
+def predict_target_logit(
+    model,
+    tokenizer,
+    text,
+    target_label,
+    device
+):
+    """
+    Return the model's target-class logit for a text input.
+    """
+
+    encoding = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=False
+    )
+
+    input_ids = encoding["input_ids"].to(device)
+    attention_mask = encoding["attention_mask"].to(device)
+
+    with torch.no_grad():
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+
+    return outputs.logits[0, target_label].item()
+
+
+def _get_word_token_groups(tokens):
+    """
+    Group original WordPiece tokens into words.
+
+    Returns:
+        words:
+            Reconstructed word strings.
+
+        word_token_groups:
+            Original token positions belonging to each word.
+    """
+
+    words = []
+    word_token_groups = []
+
+    current_word = None
+    current_indices = []
+
+    for index, token in enumerate(tokens):
+
+        # Ignore special tokens
+        if token in ["[CLS]", "[SEP]", "[PAD]"]:
+            continue
+
+        # Start a new word
+        if not token.startswith("##"):
+
+            if current_word is not None:
+                words.append(current_word)
+                word_token_groups.append(current_indices)
+
+            current_word = token
+            current_indices = [index]
+
+        # Continue current WordPiece word
+        else:
+
+            if current_word is not None:
+                current_word += token[2:]
+                current_indices.append(index)
+
+    # Store final word
+    if current_word is not None:
+        words.append(current_word)
+        word_token_groups.append(current_indices)
+
+    return words, word_token_groups
+
+
+def _create_deleted_input(
+    input_ids,
+    attention_mask,
+    deleted_token_indices,
+    tokenizer
+):
+    """
+    Create a new model input after removing selected tokens.
+
+    Special tokens are preserved.
+    """
+
+    deleted_token_indices = set(deleted_token_indices)
+
+    original_ids = input_ids[0].tolist()
+
+    remaining_ids = [
+        token_id
+        for index, token_id in enumerate(original_ids)
+        if index not in deleted_token_indices
+    ]
+
+    new_input_ids = torch.tensor(
+        [remaining_ids],
+        dtype=input_ids.dtype,
+        device=input_ids.device
+    )
+
+    new_attention_mask = torch.ones_like(
+        new_input_ids
+    )
+
+    return new_input_ids, new_attention_mask
+
+
+def _predict_from_ids(
+    model,
+    input_ids,
+    attention_mask,
+    target_label
+):
+    """
+    Predict target-class logit directly from token IDs.
+    """
+
+    with torch.no_grad():
+
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+
+    return outputs.logits[0, target_label].item()
+
+
+def top_k_deletion_curve(
+    model,
+    tokenizer,
+    text,
+    tokens,
+    scores,
+    target_label,
+    device
+):
+    """
+    Measure target-class logit while deleting words
+    in descending attribution magnitude.
+
+    The original tokenization is preserved.
+    """
+
+    encoding = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=False
+    )
+
+    input_ids = encoding["input_ids"].to(device)
+    attention_mask = encoding["attention_mask"].to(device)
+
+    words, word_token_groups = _get_word_token_groups(tokens)
+
+    scores = np.asarray(
+        [float(score) for score in scores],
+        dtype=float
+    )
+
+    if len(words) != len(scores):
+        raise ValueError(
+            "Number of words and attribution scores must match."
+        )
+
+    ranking = np.argsort(-np.abs(scores))
+
+    original_logit = _predict_from_ids(
+        model,
+        input_ids,
+        attention_mask,
+        target_label
+    )
+
+    logits = [original_logit]
+    fractions = [0.0]
+
+    deleted_token_indices = []
+
+    for step, word_index in enumerate(ranking, start=1):
+
+        deleted_token_indices.extend(
+            word_token_groups[int(word_index)]
+        )
+
+        new_input_ids, new_attention_mask = _create_deleted_input(
+            input_ids,
+            attention_mask,
+            deleted_token_indices,
+            tokenizer
+        )
+
+        logit = _predict_from_ids(
+            model,
+            new_input_ids,
+            new_attention_mask,
+            target_label
+        )
+
+        logits.append(logit)
+        fractions.append(step / len(words))
+
+    return {
+        "words": words,
+        "scores": scores,
+        "fractions": fractions,
+        "logits": logits,
+        "original_logit": original_logit
+    }
+
+
+def random_deletion_curve(
+    model,
+    tokenizer,
+    text,
+    tokens,
+    target_label,
+    device,
+    seed=42
+):
+    """
+    Measure target-class logit while randomly deleting words.
+
+    The original tokenization is preserved.
+    """
+
+    encoding = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=False
+    )
+
+    input_ids = encoding["input_ids"].to(device)
+    attention_mask = encoding["attention_mask"].to(device)
+
+    words, word_token_groups = _get_word_token_groups(tokens)
+
+    rng = np.random.default_rng(seed)
+
+    ranking = np.arange(len(words))
+    rng.shuffle(ranking)
+
+    original_logit = _predict_from_ids(
+        model,
+        input_ids,
+        attention_mask,
+        target_label
+    )
+
+    logits = [original_logit]
+    fractions = [0.0]
+
+    deleted_token_indices = []
+
+    for step, word_index in enumerate(ranking, start=1):
+
+        deleted_token_indices.extend(
+            word_token_groups[int(word_index)]
+        )
+
+        new_input_ids, new_attention_mask = _create_deleted_input(
+            input_ids,
+            attention_mask,
+            deleted_token_indices,
+            tokenizer
+        )
+
+        logit = _predict_from_ids(
+            model,
+            new_input_ids,
+            new_attention_mask,
+            target_label
+        )
+
+        logits.append(logit)
+        fractions.append(step / len(words))
+
+    return {
+        "words": words,
+        "fractions": fractions,
+        "logits": logits,
+        "original_logit": original_logit
+    }
+
+
+def evaluate_logit_faithfulness(
+    top_k_curve,
+    random_curve
+):
+    """
+    Compare attribution-guided deletion against random deletion.
+    """
+
+    top_k_logits = np.asarray(
+        top_k_curve["logits"],
+        dtype=float
+    )
+
+    random_logits = np.asarray(
+        random_curve["logits"],
+        dtype=float
+    )
+
+    original_logit = top_k_curve["original_logit"]
+
+    top_k_drop = (
+        original_logit -
+        top_k_logits[-1]
+    )
+
+    random_drop = (
+        original_logit -
+        random_logits[-1]
+    )
+
+    return {
+        "original_logit": original_logit,
+        "top_k_final_logit": top_k_logits[-1],
+        "random_final_logit": random_logits[-1],
+        "top_k_total_drop": top_k_drop,
+        "random_total_drop": random_drop,
+        "top_k_beats_random": top_k_drop > random_drop
+    }
