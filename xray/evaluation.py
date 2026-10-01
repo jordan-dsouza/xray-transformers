@@ -301,6 +301,10 @@ def evaluate_logit_faithfulness(
 ):
     """
     Compare attribution-guided deletion against random deletion.
+
+    Uses the area under the deletion curve (AUC).
+    Lower AUC means the target-class logit decreases
+    more rapidly during deletion.
     """
 
     top_k_logits = np.asarray(
@@ -313,23 +317,54 @@ def evaluate_logit_faithfulness(
         dtype=float
     )
 
+    fractions = np.asarray(
+        top_k_curve["fractions"],
+        dtype=float
+    )
+
     original_logit = top_k_curve["original_logit"]
 
-    top_k_drop = (
-        original_logit -
-        top_k_logits[-1]
+    # Calculate raw area under each deletion curve.
+    top_k_auc = np.trapezoid(
+        top_k_logits,
+        fractions
     )
 
-    random_drop = (
-        original_logit -
-        random_logits[-1]
+    random_auc = np.trapezoid(
+        random_logits,
+        fractions
     )
+
+    # Normalize by the original target logit.
+    # This makes the metric easier to compare across examples.
+    if abs(original_logit) > 1e-8:
+
+        top_k_normalized_auc = (
+            top_k_auc / original_logit
+        )
+
+        random_normalized_auc = (
+            random_auc / original_logit
+        )
+
+    else:
+
+        top_k_normalized_auc = top_k_auc
+        random_normalized_auc = random_auc
 
     return {
         "original_logit": original_logit,
+
         "top_k_final_logit": top_k_logits[-1],
         "random_final_logit": random_logits[-1],
-        "top_k_total_drop": top_k_drop,
-        "random_total_drop": random_drop,
-        "top_k_beats_random": top_k_drop > random_drop
+
+        "top_k_auc": top_k_auc,
+        "random_auc": random_auc,
+
+        "top_k_normalized_auc": top_k_normalized_auc,
+        "random_normalized_auc": random_normalized_auc,
+
+        "top_k_auc_lower": (
+            top_k_auc < random_auc
+        )
     }
