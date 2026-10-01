@@ -360,6 +360,74 @@ def summarize_random_curves(random_curves):
         "all_logits": logits
     }
 
+def evaluate_repeated_random_faithfulness(
+    top_k_curve,
+    random_summary
+):
+    """
+    Compare attribution-guided deletion against
+    the mean of multiple random deletion curves.
+
+    Uses area under the cumulative target-logit
+    drop curve.
+    """
+
+    top_k_logits = np.asarray(
+        top_k_curve["logits"],
+        dtype=float
+    )
+
+    random_mean_logits = np.asarray(
+        random_summary["mean_logits"],
+        dtype=float
+    )
+
+    fractions = np.asarray(
+        top_k_curve["fractions"],
+        dtype=float
+    )
+
+    original_logit = float(
+        top_k_curve["original_logit"]
+    )
+
+    # Convert logits into cumulative drops.
+    top_k_drops = (
+        original_logit - top_k_logits
+    )
+
+    random_mean_drops = (
+        original_logit - random_mean_logits
+    )
+
+    # Calculate area under cumulative-drop curves.
+    top_k_auc = np.trapezoid(
+        top_k_drops,
+        fractions
+    )
+
+    random_mean_auc = np.trapezoid(
+        random_mean_drops,
+        fractions
+    )
+
+    return {
+        "original_logit": original_logit,
+
+        "top_k_final_logit": top_k_logits[-1],
+        "random_mean_final_logit": random_mean_logits[-1],
+
+        "top_k_final_drop": top_k_drops[-1],
+        "random_mean_final_drop": random_mean_drops[-1],
+
+        "top_k_drop_auc": top_k_auc,
+        "random_mean_drop_auc": random_mean_auc,
+
+        "top_k_auc_higher": (
+            top_k_auc > random_mean_auc
+        )
+    }
+
 def evaluate_logit_faithfulness(
     top_k_curve,
     random_curve
