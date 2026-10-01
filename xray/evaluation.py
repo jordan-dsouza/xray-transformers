@@ -302,9 +302,10 @@ def evaluate_logit_faithfulness(
     """
     Compare attribution-guided deletion against random deletion.
 
-    Uses the area under the deletion curve (AUC).
-    Lower AUC means the target-class logit decreases
-    more rapidly during deletion.
+    Measures the area under the cumulative target-logit drop curve.
+
+    A larger AUC means the target logit drops more rapidly
+    as important features are deleted.
     """
 
     top_k_logits = np.asarray(
@@ -322,35 +323,29 @@ def evaluate_logit_faithfulness(
         dtype=float
     )
 
-    original_logit = top_k_curve["original_logit"]
+    original_logit = float(
+        top_k_curve["original_logit"]
+    )
 
-    # Calculate raw area under each deletion curve.
+    # Convert logits into cumulative drops.
+    top_k_drops = (
+        original_logit - top_k_logits
+    )
+
+    random_drops = (
+        original_logit - random_logits
+    )
+
+    # Area under cumulative-drop curves.
     top_k_auc = np.trapezoid(
-        top_k_logits,
+        top_k_drops,
         fractions
     )
 
     random_auc = np.trapezoid(
-        random_logits,
+        random_drops,
         fractions
     )
-
-    # Normalize by the original target logit.
-    # This makes the metric easier to compare across examples.
-    if abs(original_logit) > 1e-8:
-
-        top_k_normalized_auc = (
-            top_k_auc / original_logit
-        )
-
-        random_normalized_auc = (
-            random_auc / original_logit
-        )
-
-    else:
-
-        top_k_normalized_auc = top_k_auc
-        random_normalized_auc = random_auc
 
     return {
         "original_logit": original_logit,
@@ -358,13 +353,13 @@ def evaluate_logit_faithfulness(
         "top_k_final_logit": top_k_logits[-1],
         "random_final_logit": random_logits[-1],
 
-        "top_k_auc": top_k_auc,
-        "random_auc": random_auc,
+        "top_k_final_drop": top_k_drops[-1],
+        "random_final_drop": random_drops[-1],
 
-        "top_k_normalized_auc": top_k_normalized_auc,
-        "random_normalized_auc": random_normalized_auc,
+        "top_k_drop_auc": top_k_auc,
+        "random_drop_auc": random_auc,
 
-        "top_k_auc_lower": (
-            top_k_auc < random_auc
+        "top_k_auc_higher": (
+            top_k_auc > random_auc
         )
     }
