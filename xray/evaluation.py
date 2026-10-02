@@ -52,6 +52,18 @@ class ProbabilityFaithfulnessSummary(TypedDict):
     random_auc: float
     top_k_auc_higher: bool
 
+class ExampleEvaluation(TypedDict):
+    text: str
+    target_label: int
+    tokens: list[str]
+    token_attributions: np.ndarray
+    completeness_error: float
+    top_k_curve: DeletionCurve
+    random_curves: list[DeletionCurve]
+    random_summary: RandomCurveSummary
+    logit_faithfulness: FaithfulnessSummary
+    probability_faithfulness: ProbabilityFaithfulnessSummary
+
 def predict_target_logit(
     model,
     tokenizer,
@@ -191,7 +203,7 @@ def top_k_deletion_curve(
     scores: np.ndarray,
     target_label: int,
     device: torch.device,
-) -> dict[str, Any]:
+) -> DeletionCurve:
     """
     Measure target-class logit while deleting words
     in descending attribution magnitude.
@@ -272,7 +284,7 @@ def random_deletion_curve(
     target_label: int,
     device: torch.device,
     seed: int = 42,
-) -> dict[str, Any]:
+) -> DeletionCurve:
     """
     Measure target-class logit while randomly deleting words.
 
@@ -343,7 +355,7 @@ def repeated_random_deletion_curves(
     target_label: int,
     device: torch.device,
     seeds: list[int],
-) -> list[dict[str, Any]]:
+) -> list[DeletionCurve]:
     """
     Run random deletion multiple times using different seeds.
 
@@ -371,7 +383,7 @@ def repeated_random_deletion_curves(
 
 def summarize_random_curves(
     random_curves: list[dict[str, Any]],
-) -> dict[str, Any]:
+) -> RandomCurveSummary:
     """
     Calculate the mean and standard deviation across
     multiple random deletion curves.
@@ -407,7 +419,7 @@ def summarize_random_curves(
 def evaluate_repeated_random_faithfulness(
     top_k_curve: dict[str, Any],
     random_summary: dict[str, Any],
-) -> dict[str, Any]:
+) -> FaithfulnessSummary:
     """
     Compare attribution-guided deletion against
     the mean of multiple random deletion curves.
@@ -480,7 +492,7 @@ def logit_to_probability(logit):
 def evaluate_probability_faithfulness(
     top_k_curve: dict[str, Any],
     random_summary: dict[str, Any],
-) -> dict[str, Any]:
+) -> ProbabilityFaithfulnessSummary:
     """
     Compare attribution-guided deletion against
     repeated random deletion using target-class probability.
@@ -612,7 +624,7 @@ def evaluate_example(
     text: str,
     device: torch.device,
     seeds: list[int],
-) -> dict[str, Any]:
+) -> ExampleEvaluation:
     """
     Run the complete attribution faithfulness evaluation
     for a single text example.
