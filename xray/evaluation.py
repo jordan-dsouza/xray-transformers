@@ -220,6 +220,10 @@ def top_k_deletion_curve(
 
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
+    
+    tokens = tokenizer.convert_ids_to_tokens(
+    input_ids.squeeze(0)
+    )
 
     words, word_token_groups = _get_word_token_groups(tokens)
 
@@ -301,6 +305,10 @@ def random_deletion_curve(
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
 
+    tokens = tokenizer.convert_ids_to_tokens(
+        input_ids.squeeze(0)
+    )
+
     words, word_token_groups = _get_word_token_groups(tokens)
 
     rng = np.random.default_rng(seed)
@@ -370,7 +378,6 @@ def repeated_random_deletion_curves(
             model=model,
             tokenizer=tokenizer,
             text=text,
-            tokens=tokens,
             target_label=target_label,
             device=device,
             seed=seed
@@ -616,7 +623,6 @@ def print_faithfulness_summary(summary):
     )
 
 
-
 def evaluate_example(
     model: torch.nn.Module,
     tokenizer: Any,
@@ -651,6 +657,7 @@ def evaluate_example(
     baseline_output = attribution_result["baseline_output"]
     total_attribution = attribution_result["total_attribution"]
     completeness_error = attribution_result["completeness_error"]
+
     # --------------------------------------------------
     # 2. Determine target label
     # --------------------------------------------------
@@ -659,22 +666,21 @@ def evaluate_example(
         text,
         return_tensors="pt",
         truncation=True,
-        padding=False
+        padding=False,
     )
 
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
 
     with torch.no_grad():
-
         outputs = model(
             input_ids=input_ids,
-            attention_mask=attention_mask
+            attention_mask=attention_mask,
         )
 
     target_label = torch.argmax(
         outputs.logits,
-        dim=1
+        dim=1,
     ).item()
 
     # --------------------------------------------------
@@ -683,7 +689,7 @@ def evaluate_example(
 
     words, word_scores = interpreter.aggregate_tokens(
         tokens,
-        token_attributions
+        token_attributions,
     )
 
     # --------------------------------------------------
@@ -694,10 +700,9 @@ def evaluate_example(
         model=model,
         tokenizer=tokenizer,
         text=text,
-        tokens=tokens,
         scores=word_scores,
         target_label=target_label,
-        device=device
+        device=device,
     )
 
     # --------------------------------------------------
@@ -708,10 +713,9 @@ def evaluate_example(
         model=model,
         tokenizer=tokenizer,
         text=text,
-        tokens=tokens,
         target_label=target_label,
         device=device,
-        seeds=seeds
+        seeds=seeds,
     )
 
     # --------------------------------------------------
@@ -719,16 +723,16 @@ def evaluate_example(
     # --------------------------------------------------
 
     random_summary = summarize_random_curves(
-        random_curves
+        random_curves,
     )
 
     # --------------------------------------------------
-    # 7. Calculate faithfulness
+    # 7. Calculate logit faithfulness
     # --------------------------------------------------
 
     faithfulness = evaluate_repeated_random_faithfulness(
         top_k_curve=top_k_curve,
-        random_summary=random_summary
+        random_summary=random_summary,
     )
 
     # --------------------------------------------------
@@ -736,9 +740,10 @@ def evaluate_example(
     # --------------------------------------------------
 
     probability_faithfulness = evaluate_probability_faithfulness(
-    top_k_curve=top_k_curve,
-    random_summary=random_summary
-)
+        top_k_curve=top_k_curve,
+        random_summary=random_summary,
+    )
+
     # --------------------------------------------------
     # 9. Return everything
     # --------------------------------------------------
@@ -746,26 +751,19 @@ def evaluate_example(
     return {
         "text": text,
         "target_label": target_label,
-
         "tokens": tokens,
         "token_attributions": token_attributions,
-
         "words": words,
         "word_scores": word_scores,
-
         "convergence_delta": delta,
         "input_output": input_output,
         "baseline_output": baseline_output,
         "total_attribution": total_attribution,
         "completeness_error": completeness_error,
-
         "top_k_curve": top_k_curve,
-
         "random_curves": random_curves,
         "random_summary": random_summary,
-
         "faithfulness": faithfulness,
-        "probability_faithfulness": probability_faithfulness
+        "probability_faithfulness": probability_faithfulness,
     }
-
 
