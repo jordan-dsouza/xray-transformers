@@ -55,13 +55,25 @@ class ProbabilityFaithfulnessSummary(TypedDict):
 class ExampleEvaluation(TypedDict):
     text: str
     target_label: int
+
     tokens: list[str]
-    token_attributions: np.ndarray
-    completeness_error: float
+    token_attributions: torch.Tensor
+
+    words: list[str]
+    word_scores: list[float]
+
+    convergence_delta: torch.Tensor
+    input_output: torch.Tensor
+    baseline_output: torch.Tensor
+    total_attribution: torch.Tensor
+    completeness_error: torch.Tensor
+
     top_k_curve: DeletionCurve
+
     random_curves: list[DeletionCurve]
     random_summary: RandomCurveSummary
-    logit_faithfulness: FaithfulnessSummary
+
+    faithfulness: FaithfulnessSummary
     probability_faithfulness: ProbabilityFaithfulnessSummary
 
 def predict_target_logit(
