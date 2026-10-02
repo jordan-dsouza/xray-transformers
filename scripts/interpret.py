@@ -108,16 +108,15 @@ text = "This movie was marvellous!"
 
 
 # Calculate attributions
-(
-    tokens,
-    attributions,
-    delta,
-    input_output,
-    baseline_output,
-    total_attribution,
-    completeness_error
-) = interpreter.attribute(text)
+attribution_result = interpreter.attribute(text)
 
+tokens = attribution_result["tokens"]
+attributions = attribution_result["token_attributions"]
+delta = attribution_result["convergence_delta"]
+input_output = attribution_result["input_output"]
+baseline_output = attribution_result["baseline_output"]
+total_attribution = attribution_result["total_attribution"]
+completeness_error = attribution_result["completeness_error"]
 
 # Aggregate WordPiece tokens
 words, scores = interpreter.aggregate_tokens(

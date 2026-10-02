@@ -642,16 +642,15 @@ def evaluate_example(
     # 1. Generate attributions
     # --------------------------------------------------
 
-    (
-        tokens,
-        token_attributions,
-        delta,
-        input_output,
-        baseline_output,
-        total_attribution,
-        completeness_error
-    ) = interpreter.attribute(text)
+    attribution_result = interpreter.attribute(text)
 
+    tokens = attribution_result["tokens"]
+    token_attributions = attribution_result["token_attributions"]
+    delta = attribution_result["convergence_delta"]
+    input_output = attribution_result["input_output"]
+    baseline_output = attribution_result["baseline_output"]
+    total_attribution = attribution_result["total_attribution"]
+    completeness_error = attribution_result["completeness_error"]
     # --------------------------------------------------
     # 2. Determine target label
     # --------------------------------------------------
