@@ -1,4 +1,8 @@
-"""import torch
+"""
+!!! OLD VERSION !!! 
+!!! READ ONLY !!!
+
+import torch
 
 from transformers import (
     DistilBertForSequenceClassification,
@@ -64,7 +68,16 @@ for word, scores in zip(words, scores):
 # Check how well have the Integrated Gradients converged:
 print("\nConvergence delta:", float(delta.item()))
 
-# Delta value closer to 0 indicates better convergence"""
+# Delta value closer to 0 indicates better convergence
+
+!!! OLD VERSION !!! 
+!!! READ ONLY !!!
+
+"""
+
+
+
+
 import torch
 
 from transformers import (
